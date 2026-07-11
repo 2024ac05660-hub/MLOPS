@@ -180,6 +180,40 @@ def tune_random_forest(X_train, y_train):
     return gs.best_params_, gs.best_estimator_
 
 
+def tune_logistic_regression(X_train, y_train):
+    """Grid-search best LR hyperparameters."""
+    preproc = build_preprocessing_pipeline()
+    base_pipeline = Pipeline(
+        [("preprocessor", preproc),
+         ("classifier", LogisticRegression(solver="lbfgs", max_iter=1000, random_state=42))],
+        memory=None,
+    )
+    param_grid = {"classifier__C": [0.01, 0.1, 1.0, 10.0]}
+    gs = GridSearchCV(base_pipeline, param_grid, cv=5, scoring="roc_auc", n_jobs=-1)
+    gs.fit(X_train, y_train)
+    print(f"Best LR params: {gs.best_params_}  CV AUC={gs.best_score_:.4f}")
+    return gs.best_params_
+
+
+def tune_gradient_boosting(X_train, y_train):
+    """Grid-search best GB hyperparameters."""
+    preproc = build_preprocessing_pipeline()
+    base_pipeline = Pipeline(
+        [("preprocessor", preproc),
+         ("classifier", GradientBoostingClassifier(random_state=42))],
+        memory=None,
+    )
+    param_grid = {
+        "classifier__n_estimators": [100, 150],
+        "classifier__learning_rate": [0.05, 0.1],
+        "classifier__max_depth": [3, 4],
+    }
+    gs = GridSearchCV(base_pipeline, param_grid, cv=5, scoring="roc_auc", n_jobs=-1)
+    gs.fit(X_train, y_train)
+    print(f"Best GB params: {gs.best_params_}  CV AUC={gs.best_score_:.4f}")
+    return gs.best_params_
+
+
 def save_best_model(pipeline, model_name="best_model"):
     os.makedirs(MODEL_DIR, exist_ok=True)
     path = os.path.join(MODEL_DIR, f"{model_name}.pkl")
@@ -197,9 +231,11 @@ def main():
     X_train, X_test, y_train, y_test = prepare_train_test(df)
     print(f"Train: {X_train.shape}  Test: {X_test.shape}")
 
-    # --- Model 1: Logistic Regression ---
-    lr_params = {"C": 1.0, "solver": "lbfgs", "max_iter": 1000, "random_state": 42}
-    lr_clf = LogisticRegression(**lr_params)
+    # --- Model 1: Logistic Regression (tuned) ---
+    best_lr_params = tune_logistic_regression(X_train, y_train)
+    lr_c = best_lr_params["classifier__C"]
+    lr_params = {"C": lr_c, "solver": "lbfgs", "max_iter": 1000, "random_state": 42}
+    lr_clf = LogisticRegression(C=lr_c, solver="lbfgs", max_iter=1000, random_state=42)
     lr_pipeline, lr_metrics = train_and_log(
         "Logistic Regression", lr_clf, lr_params, X_train, X_test, y_train, y_test
     )
@@ -219,15 +255,19 @@ def main():
         "Random Forest", rf_clf, rf_plain_params, X_train, X_test, y_train, y_test
     )
 
-    # --- Model 3: Gradient Boosting ---
+    # --- Model 3: Gradient Boosting (tuned) ---
+    best_gb_params = tune_gradient_boosting(X_train, y_train)
+    gb_n = best_gb_params["classifier__n_estimators"]
+    gb_lr = best_gb_params["classifier__learning_rate"]
+    gb_depth = best_gb_params["classifier__max_depth"]
     gb_params = {
-        "n_estimators": 150, "learning_rate": 0.1,
-        "max_depth": 4, "random_state": 42,
+        "n_estimators": gb_n, "learning_rate": gb_lr,
+        "max_depth": gb_depth, "random_state": 42,
     }
     gb_clf = GradientBoostingClassifier(
-        n_estimators=150,
-        learning_rate=0.1,
-        max_depth=4,
+        n_estimators=gb_n,
+        learning_rate=gb_lr,
+        max_depth=gb_depth,
         random_state=42,
     )
     gb_pipeline, gb_metrics = train_and_log(

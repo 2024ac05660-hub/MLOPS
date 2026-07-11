@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
+from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import StandardScaler
 from sklearn.impute import SimpleImputer
 
@@ -15,9 +16,7 @@ COLUMN_NAMES = [
     "slope", "ca", "thal", "target",
 ]
 
-# Categorical features (no scaling needed, but impute)
 CATEGORICAL_FEATURES = ["sex", "cp", "fbs", "restecg", "exang", "slope", "ca", "thal"]
-# Continuous features (scale)
 CONTINUOUS_FEATURES = ["age", "trestbps", "chol", "thalach", "oldpeak"]
 ALL_FEATURES = CONTINUOUS_FEATURES + CATEGORICAL_FEATURES
 
@@ -36,18 +35,14 @@ def load_raw_data(path: str = RAW_DATA_PATH) -> pd.DataFrame:
 
 def clean_data(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
-    # Binarise target: 0 = no disease, 1 = disease (values 1-4 → 1)
     df["target"] = (df["target"] > 0).astype(int)
-    # Log missing values
     missing = df.isnull().sum()
     if missing.any():
         print("Missing values before imputation:")
         print(missing[missing > 0])
-    # Median imputation for numeric columns with missing values
     for col in ["ca", "thal"]:
         df[col] = pd.to_numeric(df[col], errors="coerce")
         df[col] = df[col].fillna(df[col].median())
-    # Ensure correct dtypes
     for col in CATEGORICAL_FEATURES:
         df[col] = df[col].astype(float)
     return df
@@ -69,13 +64,27 @@ def get_feature_target(df: pd.DataFrame):
     return X, y
 
 
-def build_preprocessing_pipeline() -> Pipeline:
-    """Return a sklearn Pipeline that imputes + scales all features."""
-    pipeline = Pipeline([
+def build_preprocessing_pipeline() -> ColumnTransformer:
+    """
+    Return a ColumnTransformer that applies:
+    - Continuous features: median imputation + standard scaling
+    - Categorical features: median imputation only (already numeric codes)
+    """
+    continuous_pipe = Pipeline([
         ("imputer", SimpleImputer(strategy="median")),
         ("scaler", StandardScaler()),
     ])
-    return pipeline
+    categorical_pipe = Pipeline([
+        ("imputer", SimpleImputer(strategy="median")),
+    ])
+    preprocessor = ColumnTransformer(
+        transformers=[
+            ("continuous", continuous_pipe, CONTINUOUS_FEATURES),
+            ("categorical", categorical_pipe, CATEGORICAL_FEATURES),
+        ],
+        remainder="drop",
+    )
+    return preprocessor
 
 
 def prepare_train_test(df: pd.DataFrame, test_size: float = 0.2, random_state: int = 42):

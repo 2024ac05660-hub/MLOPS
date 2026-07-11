@@ -4,6 +4,7 @@
 **Assignment:** 01  
 **Dataset:** Heart Disease UCI (Cleveland)  
 **Total Marks:** 50  
+**GitHub Repository:** [https://github.com/2024ac05660-hub/MLOPS](https://github.com/2024ac05660-hub/MLOPS)  
 
 ---
 
@@ -78,7 +79,7 @@ conda activate heart-disease-mlops
 ### Dataset Overview
 
 | Property | Value |
-|---|---|
+| --- | --- |
 | Source | UCI ML Repository — Cleveland Clinic |
 | Samples | 303 |
 | Features | 13 (numeric) |
@@ -104,13 +105,14 @@ conda activate heart-disease-mlops
 ### EDA Visualisations
 
 | Plot | File |
-|---|---|
+| --- | --- |
 | Missing values | `screenshots/eda_missing_values.png` |
 | Class balance | `screenshots/eda_class_balance.png` |
 | Continuous distributions | `screenshots/eda_continuous_distributions.png` |
 | Categorical feature counts | `screenshots/eda_categorical_features.png` |
 | Correlation heatmap | `screenshots/eda_correlation_heatmap.png` |
 | Boxplots | `screenshots/eda_boxplots.png` |
+| Feature relationships (pairplot) | `screenshots/eda_feature_relationships.png` |
 
 ---
 
@@ -119,15 +121,15 @@ conda activate heart-disease-mlops
 All 13 features are used (no dimensionality reduction needed given the small feature set):
 
 | Feature | Type | Preprocessing |
-|---|---|---|
-| age | Continuous | StandardScaler |
-| trestbps | Continuous | StandardScaler |
-| chol | Continuous | StandardScaler |
-| thalach | Continuous | StandardScaler |
-| oldpeak | Continuous | StandardScaler |
-| sex, cp, fbs, restecg, exang, slope, ca, thal | Categorical | Median imputation |
+| --- | --- | --- |
+| age | Continuous | Median imputation + StandardScaler |
+| trestbps | Continuous | Median imputation + StandardScaler |
+| chol | Continuous | Median imputation + StandardScaler |
+| thalach | Continuous | Median imputation + StandardScaler |
+| oldpeak | Continuous | Median imputation + StandardScaler |
+| sex, cp, fbs, restecg, exang, slope, ca, thal | Categorical | Median imputation only |
 
-A single `sklearn.Pipeline` combines `SimpleImputer(strategy='median')` + `StandardScaler` to prevent data leakage — the pipeline is fit only on training data and applied to both train and test.
+A `ColumnTransformer` applies separate pipelines to continuous and categorical features — continuous features get `SimpleImputer(median)` + `StandardScaler`; categorical features get `SimpleImputer(median)` only (already numeric codes). This is wrapped in a final `sklearn.Pipeline` with the classifier to prevent data leakage — fit only on training data.
 
 ---
 
@@ -145,24 +147,31 @@ A single `sklearn.Pipeline` combines `SimpleImputer(strategy='median')` + `Stand
 ### Results Summary
 
 | Model | Accuracy | Precision | Recall | F1 | ROC-AUC | CV AUC |
-|---|---|---|---|---|---|---|
-| Logistic Regression | ~0.836 | ~0.833 | ~0.862 | ~0.847 | ~0.910 | ~0.907 |
-| Random Forest (tuned) | ~0.869 | ~0.862 | ~0.897 | ~0.879 | ~0.929 | ~0.920 |
-| Gradient Boosting | ~0.885 | ~0.879 | ~0.914 | ~0.896 | ~0.942 | ~0.938 |
+| --- | --- | --- | --- | --- | --- | --- |
+| Logistic Regression (C=10.0) | 0.869 | 0.812 | 0.929 | 0.867 | 0.949 | 0.890 |
+| Random Forest (n=200, depth=6) | 0.902 | 0.867 | 0.929 | 0.897 | 0.952 | 0.895 |
+| Gradient Boosting (lr=0.05, depth=3) | 0.836 | 0.765 | 0.929 | 0.839 | 0.948 | 0.864 |
 
-**Best model selected:** Gradient Boosting (highest ROC-AUC)
+**Best model selected:** Random Forest (highest ROC-AUC = 0.952)
 
-### Random Forest Tuning
-Grid search over:
-- `n_estimators`: [100, 200]
-- `max_depth`: [4, 6, None]
-- `min_samples_split`: [2, 5]
+### Hyperparameter Tuning (GridSearchCV, cv=5, scoring=roc_auc)
 
-### View MLflow UI
-```bash
-mlflow ui --backend-store-uri ./mlruns --port 5000
-# Open http://localhost:5000
-```
+| Model | Search Space | Best Params |
+| --- | --- | --- |
+| Logistic Regression | C: [0.01, 0.1, 1.0, 10.0] | C=10.0 |
+| Random Forest | n_estimators: [100,200], max_depth: [4,6,None], min_samples_split: [2,5] | n=200, depth=6, split=2 |
+| Gradient Boosting | n_estimators: [100,150], learning_rate: [0.05,0.1], max_depth: [3,4] | n=100, lr=0.05, depth=3 |
+
+### MLflow Artifacts per Run
+
+| Artifact | File in screenshots/ |
+| --- | --- |
+| ROC Curve | `roc_Logistic_Regression.png`, `roc_Random_Forest.png`, `roc_Gradient_Boosting.png` |
+| Confusion Matrix | `cm_Logistic_Regression.png`, `cm_Random_Forest.png`, `cm_Gradient_Boosting.png` |
+| Feature Importance | `fi_Logistic_Regression.png`, `fi_Random_Forest.png`, `fi_Gradient_Boosting.png` |
+| Classification Report | `report/report_*.txt` |
+
+> **To view MLflow UI:** `mlflow ui --backend-store-uri ./mlruns --port 5000` → open [http://localhost:5000](http://localhost:5000)
 
 ---
 
@@ -236,7 +245,7 @@ Push to main/develop
 ### Multi-stage Dockerfile
 
 | Stage | Purpose |
-|---|---|
+| --- | --- |
 | `builder` | Install Python packages (reduces final image size) |
 | `runtime` | Copy packages + source, run as non-root user |
 
@@ -260,7 +269,7 @@ docker-compose up -d
 ### API Endpoints
 
 | Endpoint | Method | Description |
-|---|---|---|
+| --- | --- | --- |
 | `/` | GET | Service info |
 | `/health` | GET | Liveness probe |
 | `/predict` | POST | Heart disease prediction |
@@ -343,7 +352,7 @@ Every request is logged as JSON:
 ### Prometheus Metrics
 
 | Metric | Type | Description |
-|---|---|---|
+| --- | --- | --- |
 | `hd_predictions_total` | Counter | Total predictions, labelled by class |
 | `hd_prediction_latency_seconds` | Histogram | Per-prediction latency |
 | `hd_model_confidence` | Histogram | Confidence score distribution |
