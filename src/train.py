@@ -15,7 +15,6 @@ import mlflow
 import mlflow.sklearn
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
-from sklearn.svm import SVC
 from sklearn.pipeline import Pipeline
 from sklearn.model_selection import cross_validate, StratifiedKFold, GridSearchCV
 from sklearn.metrics import (
@@ -34,6 +33,7 @@ MLFLOW_TRACKING_URI = os.path.join(os.path.dirname(__file__), "..", "mlruns")
 EXPERIMENT_NAME = "heart-disease-classification"
 MODEL_DIR = os.path.join(os.path.dirname(__file__), "..", "models")
 PLOTS_DIR = os.path.join(os.path.dirname(__file__), "..", "screenshots")
+REPORTS_DIR = os.path.join(os.path.dirname(__file__), "..", "report")
 
 
 def compute_metrics(y_true, y_pred, y_proba):
@@ -46,10 +46,10 @@ def compute_metrics(y_true, y_pred, y_proba):
     }
 
 
-def plot_roc_curve(model_name, y_test, y_proba, run_id):
+def plot_roc_curve(model_name, y_test, y_proba):
     fpr, tpr, _ = roc_curve(y_test, y_proba)
     auc = roc_auc_score(y_test, y_proba)
-    fig, ax = plt.subplots(figsize=(6, 5))
+    _, ax = plt.subplots(figsize=(6, 5))
     ax.plot(fpr, tpr, lw=2, color="#e74c3c", label=f"ROC (AUC = {auc:.3f})")
     ax.plot([0, 1], [0, 1], "k--", lw=1)
     ax.set_xlabel("False Positive Rate")
@@ -66,7 +66,7 @@ def plot_roc_curve(model_name, y_test, y_proba, run_id):
 def plot_confusion_matrix(model_name, y_test, y_pred):
     cm = confusion_matrix(y_test, y_pred)
     disp = ConfusionMatrixDisplay(cm, display_labels=["No Disease", "Disease"])
-    fig, ax = plt.subplots(figsize=(5, 4))
+    _, ax = plt.subplots(figsize=(5, 4))
     disp.plot(ax=ax, colorbar=False, cmap="Blues")
     ax.set_title(f"Confusion Matrix — {model_name}", fontweight="bold")
     plt.tight_layout()
@@ -85,7 +85,7 @@ def plot_feature_importance(model_name, pipeline, feature_names):
     else:
         return None
     idx = np.argsort(importances)[::-1]
-    fig, ax = plt.subplots(figsize=(10, 5))
+    _, ax = plt.subplots(figsize=(10, 5))
     ax.bar(range(len(feature_names)), importances[idx], color="#3498db", edgecolor="white")
     ax.set_xticks(range(len(feature_names)))
     ax.set_xticklabels([feature_names[i] for i in idx], rotation=45, ha="right")
@@ -101,13 +101,14 @@ def plot_feature_importance(model_name, pipeline, feature_names):
 def train_and_log(model_name, classifier, params, X_train, X_test, y_train, y_test):
     """Train one model, log everything to MLflow, return (pipeline, metrics)."""
     os.makedirs(PLOTS_DIR, exist_ok=True)
+    os.makedirs(REPORTS_DIR, exist_ok=True)
     os.makedirs(MODEL_DIR, exist_ok=True)
 
     preproc = build_preprocessing_pipeline()
-    pipeline = Pipeline([
-        ("preprocessor", preproc),
-        ("classifier", classifier),
-    ])
+    pipeline = Pipeline(
+        [("preprocessor", preproc), ("classifier", classifier)],
+        memory=None,
+    )
     pipeline.fit(X_train, y_train)
 
     y_pred = pipeline.predict(X_test)
@@ -128,7 +129,7 @@ def train_and_log(model_name, classifier, params, X_train, X_test, y_train, y_te
         mlflow.log_params(params)
         mlflow.log_metrics(metrics)
 
-        roc_path = plot_roc_curve(model_name, y_test, y_proba, None)
+        roc_path = plot_roc_curve(model_name, y_test, y_proba)
         cm_path = plot_confusion_matrix(model_name, y_test, y_pred)
         fi_path = plot_feature_importance(model_name, pipeline, ALL_FEATURES)
 
@@ -142,7 +143,7 @@ def train_and_log(model_name, classifier, params, X_train, X_test, y_train, y_te
 
         report = classification_report(y_test, y_pred,
                                        target_names=["No Disease", "Disease"])
-        report_path = os.path.join(PLOTS_DIR, f"report_{model_name.replace(' ', '_')}.txt")
+        report_path = os.path.join(REPORTS_DIR, f"report_{model_name.replace(' ', '_')}.txt")
         with open(report_path, "w") as f:
             f.write(report)
         mlflow.log_artifact(report_path, artifact_path="reports")
@@ -163,10 +164,11 @@ def train_and_log(model_name, classifier, params, X_train, X_test, y_train, y_te
 def tune_random_forest(X_train, y_train):
     """Grid-search best RF hyperparameters."""
     preproc = build_preprocessing_pipeline()
-    base_pipeline = Pipeline([
-        ("preprocessor", preproc),
-        ("classifier", RandomForestClassifier(random_state=42)),
-    ])
+    base_pipeline = Pipeline(
+        [("preprocessor", preproc),
+         ("classifier", RandomForestClassifier(random_state=42))],
+        memory=None,
+    )
     param_grid = {
         "classifier__n_estimators": [100, 200],
         "classifier__max_depth": [4, 6, None],
@@ -208,6 +210,8 @@ def main():
         n_estimators=best_rf_params["classifier__n_estimators"],
         max_depth=best_rf_params["classifier__max_depth"],
         min_samples_split=best_rf_params["classifier__min_samples_split"],
+        min_samples_leaf=1,
+        max_features="sqrt",
         random_state=42,
     )
     rf_plain_params = {k.replace("classifier__", ""): v for k, v in best_rf_params.items()}
@@ -216,8 +220,16 @@ def main():
     )
 
     # --- Model 3: Gradient Boosting ---
-    gb_params = {"n_estimators": 150, "learning_rate": 0.1, "max_depth": 4, "random_state": 42}
-    gb_clf = GradientBoostingClassifier(**gb_params)
+    gb_params = {
+        "n_estimators": 150, "learning_rate": 0.1,
+        "max_depth": 4, "random_state": 42,
+    }
+    gb_clf = GradientBoostingClassifier(
+        n_estimators=150,
+        learning_rate=0.1,
+        max_depth=4,
+        random_state=42,
+    )
     gb_pipeline, gb_metrics = train_and_log(
         "Gradient Boosting", gb_clf, gb_params, X_train, X_test, y_train, y_test
     )
@@ -234,7 +246,6 @@ def main():
     print(f"\n>>> Best model: {best_name}  ROC-AUC={best_metrics['roc_auc']}")
     save_best_model(best_pipeline, "best_model")
 
-    # Save model metadata
     meta = {"best_model": best_name, "metrics": best_metrics}
     with open(os.path.join(MODEL_DIR, "model_meta.json"), "w") as f:
         json.dump(meta, f, indent=2)
