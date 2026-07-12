@@ -3,30 +3,31 @@ FROM python:3.10-slim AS builder
 
 WORKDIR /app
 
-# Install build dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends gcc && \
     rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
 RUN pip install --upgrade pip && \
-    pip install --no-cache-dir --user -r requirements.txt
+    pip install --no-cache-dir -r requirements.txt
 
 # ── Stage 2: Runtime ──────────────────────────────────────────────────────────
 FROM python:3.10-slim AS runtime
 
 WORKDIR /app
 
-# Copy installed packages from builder
-COPY --from=builder /root/.local /root/.local
-ENV PATH=/root/.local/bin:$PATH
+# Copy system-wide installed packages from builder
+COPY --from=builder /usr/local/lib/python3.10/site-packages /usr/local/lib/python3.10/site-packages
+COPY --from=builder /usr/local/bin /usr/local/bin
 
 # Copy source code
 COPY src/ ./src/
 COPY api/ ./api/
 COPY data/ ./data/
-COPY models/ ./models/
 
-# Ensure Python can find src module
+# models/ is mounted at runtime or copied by CI — create dir so it exists
+RUN mkdir -p ./models/
+
+# Ensure Python can find src and api modules
 ENV PYTHONPATH=/app/src:/app/api
 
 # Non-root user for security
@@ -35,7 +36,7 @@ USER apiuser
 
 EXPOSE 8080
 
-HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=10s --start-period=20s --retries=5 \
   CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')"
 
 CMD ["python", "-m", "uvicorn", "app:app", \
