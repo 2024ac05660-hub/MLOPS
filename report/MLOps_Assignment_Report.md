@@ -92,10 +92,10 @@ pip install -r requirements.txt
 python scripts/download_data.py
 
 # 5. Preprocess data (generates data/processed/heart_disease_clean.csv)
-python src/data_processing.py
+PYTHONPATH=src python src/data_processing.py
 
 # 6. Train all three models (logs to MLflow automatically)
-python src/train.py
+PYTHONPATH=src python src/train.py
 
 # 7. View MLflow UI
 mlflow ui --backend-store-uri ./mlruns --port 5000
@@ -120,7 +120,7 @@ conda activate heart-disease-mlops
 ### Run Tests
 
 ```bash
-pytest tests/test_data_processing.py tests/test_model.py -v
+PYTHONPATH=src pytest tests/test_data_processing.py tests/test_model.py -v
 # Expected: 34 passed
 ```
 
@@ -280,7 +280,18 @@ mlflow ui --backend-store-uri ./mlruns --port 5000
 # Open http://localhost:5000 in your browser
 ```
 
-> **Screenshot note:** Run `python src/train.py` then open the MLflow UI to see the experiment runs, metric comparisons, and registered models. The screenshots folder contains all plots that were logged as artifacts: `roc_*.png`, `cm_*.png`, `fi_*.png`.
+### Screenshot 1 — MLflow Registered Models (`http://localhost:5000/#/models`)
+
+All three models registered in the MLflow Model Registry — Gradient_Boosting, Logistic_Regression,
+Random_Forest — each at Version 4.
+
+![MLflow Registered Models](../screenshots/mlflow_models.png)
+
+### Screenshot 2 — MLflow Model Version Details (`http://localhost:5000/#/models/Gradient_Boosting`)
+
+Gradient Boosting model showing 4 versions across all training runs, with timestamps.
+
+![MLflow Model Detail](../screenshots/mlflow_model_detail.png)
 
 ---
 
@@ -288,7 +299,7 @@ mlflow ui --backend-store-uri ./mlruns --port 5000
 
 ### Saved Files
 
-```
+```text
 models/
 ├── best_model.pkl       # Full sklearn Pipeline (ColumnTransformer + RandomForest)
 └── model_meta.json      # Best model name + final metrics
@@ -304,7 +315,9 @@ The `best_model.pkl` file contains the **complete end-to-end pipeline** — a si
 
 ### Preprocessing Reproducibility
 
-The `ColumnTransformer` inside `best_model.pkl` stores the fitted `StandardScaler` mean and variance from training data. Inference on new data uses exactly the same transformation — no risk of train/test leakage or inconsistent scaling.
+The `ColumnTransformer` inside `best_model.pkl` stores the fitted `StandardScaler` mean and variance
+from training data. Inference on new data uses exactly the same transformation — no risk of
+train/test leakage or inconsistent scaling.
 
 ---
 
@@ -315,7 +328,7 @@ The `ColumnTransformer` inside `best_model.pkl` stores the fitted `StandardScale
 
 ### Pipeline Flow
 
-```
+```text
 git push to main / pull request
          │
          ▼
@@ -353,9 +366,22 @@ git push to main / pull request
 
 ### Failure Behaviour
 
-The pipeline is configured with `needs:` dependencies — if the lint job fails, testing never runs; if testing fails, training never runs; if training fails, Docker build never runs. This ensures broken code never reaches the container stage.
+The pipeline is configured with `needs:` dependencies — if lint fails, testing never runs; if testing
+fails, training never runs; if training fails, Docker build never runs. Broken code never reaches
+the container stage.
 
-> **Screenshot note:** After pushing to GitHub, navigate to the repository → Actions tab to see the workflow run with all four stages. Each stage shows logs, and uploaded artifacts appear at the bottom of the run summary page.
+### Screenshot 3 — Unit Tests Passing (Terminal)
+
+All 34 unit tests pass across data processing, model inference, and pipeline serialisation.
+Run command: `PYTHONPATH=src pytest tests/test_data_processing.py tests/test_model.py -v`
+
+![Unit Tests 34 Passed](../screenshots/pytest_34_passed.png)
+
+### Screenshot 13 — GitHub Actions CI/CD Pipeline (`https://github.com/2024ac05660-hub/MLOPS/actions`)
+
+All 4 stages green — Lint (flake8 + black) ✅ Unit Tests ✅ Model Training ✅ Docker Build & Smoke Test ✅
+
+![GitHub Actions Pipeline](../screenshots/github_pipeline.png)
 
 ---
 
@@ -415,12 +441,14 @@ docker stop hd-api && docker rm hd-api
 ### Sample Prediction
 
 **Request:**
+
 ```json
 {"age":55,"sex":1,"cp":4,"trestbps":140,"chol":217,"fbs":0,
  "restecg":2,"thalach":111,"exang":1,"oldpeak":5.6,"slope":3,"ca":0,"thal":7}
 ```
 
 **Response:**
+
 ```json
 {
   "prediction": 1,
@@ -428,11 +456,42 @@ docker stop hd-api && docker rm hd-api
   "confidence": 0.931,
   "probabilities": {"no_disease": 0.069, "disease": 0.931},
   "model_version": "1.0.0",
-  "timestamp": "2026-07-11T15:18:48+00:00"
+  "timestamp": "2026-07-12T16:30:15+00:00"
 }
 ```
 
-> **Screenshot note:** Build and run the Docker container, then open `http://localhost:8080/docs` in a browser. Use the Swagger UI to execute a `/predict` call and capture the response screenshot.
+### Screenshot 4 — Swagger UI `/predict` (`http://localhost:8080/docs`)
+
+Swagger UI showing the POST /predict endpoint with sample JSON input. The curl command and
+request body are visible at the bottom.
+
+![Swagger Predict](../screenshots/swagger_predict.png)
+
+### Screenshot 5 — Docker Build Output (Terminal)
+
+Multi-stage Docker build completing successfully — all 17 build steps finished in 114.9s.
+The build context is only 1.10 MB thanks to `.dockerignore`.
+
+![Docker Build](../screenshots/docker_build.png)
+
+### Screenshot 6 — Docker Container Running (`docker ps`)
+
+Container `hd-api` running with status `Up 5 minutes (healthy)` on `0.0.0.0:8080->8080/tcp`.
+
+![Docker PS](../screenshots/docker_ps.png)
+
+### Screenshot 7 — Docker Desktop Containers
+
+Docker Desktop showing all running containers — `heart-disease-api` (8080:8080),
+`prometheus` (9090:9090), and `grafana` (3000:3000) all healthy.
+
+![Docker Desktop Running](../screenshots/docker_desktop_running.png)
+
+### Screenshot — API Health Check (`http://localhost:8080/health`)
+
+Browser confirming the API is live with `{"status":"ok","model_loaded":true}`.
+
+![Docker Health Check](../screenshots/docker_health.png)
 
 ---
 
@@ -442,24 +501,23 @@ docker stop hd-api && docker rm hd-api
 
 ```bash
 # 1. Start Minikube cluster
-minikube start --driver=docker --memory=4096
+~/minikube start --driver=docker --memory=4096
 
 # 2. Load local Docker image into Minikube
-minikube image load heart-disease-api:latest
+~/minikube image load heart-disease-api:latest
 
 # 3. Apply all Kubernetes manifests
 kubectl apply -f k8s/deployment.yaml   # 2-replica Deployment
 kubectl apply -f k8s/service.yaml      # LoadBalancer Service
 kubectl apply -f k8s/hpa.yaml          # Horizontal Pod Autoscaler
-kubectl apply -f k8s/ingress.yaml      # Nginx Ingress
 
 # 4. Watch pods start up
 kubectl get pods -w
 
-# 5. Get the service URL
-minikube service heart-disease-api --url
+# 5. Get the service URL (keep this terminal open)
+~/minikube service heart-disease-api --url
 
-# 6. Test the deployed API (replace <URL> with output of step 5)
+# 6. Test the deployed API
 curl <URL>/health
 curl -X POST <URL>/predict \
   -H "Content-Type: application/json" \
@@ -469,15 +527,9 @@ curl -X POST <URL>/predict \
 ### Using Helm
 
 ```bash
-# Install the Helm chart
 helm install heart-disease ./helm/heart-disease-api
-
-# Check status
 helm status heart-disease
 kubectl get pods
-
-# Scale up
-helm upgrade heart-disease ./helm/heart-disease-api --set replicaCount=3
 ```
 
 ### Kubernetes Resources
@@ -490,7 +542,28 @@ helm upgrade heart-disease ./helm/heart-disease-api --set replicaCount=3
 | Ingress | nginx, host `heart-disease-api.local` |
 | Probes | Liveness + readiness at `/health` |
 
-> **Screenshot note:** Run `kubectl get pods`, `kubectl get svc`, and `kubectl get hpa` after deployment and capture the terminal output. Also screenshot the `minikube service heart-disease-api --url` response and the curl output from the Minikube URL.
+### Screenshot 10+11 — Minikube in Docker Desktop
+
+Minikube cluster running as a Docker container (`k8s-minikube`) with 26% CPU and 1.26 GB / 4 GB
+memory usage.
+
+![Minikube Docker Running](../screenshots/minikube_docker_running.png)
+
+### Screenshot — kubectl get pods / svc / hpa + Minikube API Test
+
+Both pods in `Running` state, LoadBalancer service on port 80:31816, HPA configured for 2–6
+replicas. Health check and predict curl both succeed through the Minikube tunnel
+`http://127.0.0.1:61321`.
+
+![kubectl pods svc hpa and API test](../screenshots/kubectl_pods_svc_hpa.png)
+
+### Screenshot 12 — API Response via Minikube URL (`http://127.0.0.1:61321`)
+
+`/health` returns `{"status":"ok","model_loaded":true}` and `/predict` returns
+`{"prediction":1,"label":"Heart Disease","confidence":0.931}` — API fully functional
+through Kubernetes.
+
+![Minikube API Test](../screenshots/minikube_api_test.png)
 
 ---
 
@@ -501,7 +574,7 @@ helm upgrade heart-disease ./helm/heart-disease-api --set replicaCount=3
 Every HTTP request is logged as a JSON line to stdout:
 
 ```json
-{"time":"2026-07-11T15:18:48","level":"INFO",
+{"time":"2026-07-12T16:30:15","level":"INFO",
  "message":"path=/predict method=POST status=200 duration=0.0120s client=127.0.0.1"}
 ```
 
@@ -524,22 +597,31 @@ docker-compose up -d
 # Grafana:    http://localhost:3000  (admin / admin123)
 ```
 
-The Grafana dashboard (`monitoring/grafana/provisioning/dashboards/heart_disease_api.json`) is **auto-provisioned** on first startup with panels for:
+### Screenshot 8 — Prometheus Metrics (`http://localhost:9090`)
 
-- Total prediction count (stat)
-- Predictions by class (pie chart)
-- p95 prediction latency (stat)
-- Request rate over time (timeseries)
-- Error count (stat with threshold alerting)
-- Confidence score distribution (histogram)
+Query `hd_predictions_total` showing `prediction_class="0"` = 16 and `prediction_class="1"` = 15,
+Result series: 2. Confirms Prometheus is scraping the API's `/metrics` endpoint successfully.
 
-> **Screenshot note:** Start `docker-compose up -d`, send a few `/predict` requests, then screenshot: (1) Prometheus at `http://localhost:9090` showing `hd_predictions_total`, and (2) Grafana at `http://localhost:3000` showing the Heart Disease API dashboard with live data.
+![Prometheus hd_predictions_total](../screenshots/prometheus_metrics.png)
+
+### Screenshot 9 — Grafana Dashboard (`http://localhost:3000`)
+
+Heart Disease API Dashboard auto-provisioned at `http://localhost:3000/d/hd-api-dashboard`:
+
+- **Total Predictions:** 31
+- **Predictions by Class:** pie chart showing Class 0 vs Class 1 split
+- **Prediction Latency p95:** 17.2 ms
+- **Request Rate:** timeseries for GET /health, GET /metrics, POST /predict
+- **Prediction Errors:** 0
+- **Confidence Score Distribution:** histogram showing high-confidence predictions
+
+![Grafana Dashboard](../screenshots/grafana_dashboard.png)
 
 ---
 
 ## 12. Architecture Diagram
 
-```
+```text
 ┌────────────────────────────────────────────────────────────────┐
 │                    Developer Workstation                       │
 │                                                                │
@@ -585,7 +667,7 @@ The Grafana dashboard (`monitoring/grafana/provisioning/dashboards/heart_disease
 
 ## Repository Structure
 
-```
+```text
 heart-disease-mlops/
 ├── .github/
 │   └── workflows/ci.yml              # GitHub Actions — 4-stage CI/CD
@@ -611,7 +693,7 @@ heart-disease-mlops/
 ├── report/
 │   ├── MLOps_Assignment_Report.md    # This report (source)
 │   └── report_*.txt                  # Per-model classification reports
-├── screenshots/                      # All EDA + model plots (19 PNG files)
+├── screenshots/                      # All pipeline + EDA + model screenshots
 ├── scripts/
 │   ├── download_data.py              # Dataset download script
 │   └── run_eda.py                    # Headless EDA script for CI
@@ -638,9 +720,11 @@ heart-disease-mlops/
 
 | Method | Command | URL |
 | --- | --- | --- |
-| Raw Python | `uvicorn api.app:app --port 8080` | [http://localhost:8080](http://localhost:8080) |
+| Raw Python | `PYTHONPATH=src:api uvicorn api.app:app --port 8080` | [http://localhost:8080](http://localhost:8080) |
 | Docker | `docker run -p 8080:8080 heart-disease-api:latest` | [http://localhost:8080](http://localhost:8080) |
 | Docker Compose | `docker-compose up -d` | [http://localhost:8080](http://localhost:8080) |
-| Kubernetes | `minikube service heart-disease-api --url` | dynamic |
+| Prometheus | `docker-compose up -d` | [http://localhost:9090](http://localhost:9090) |
+| Grafana | `docker-compose up -d` | [http://localhost:3000](http://localhost:3000) (admin/admin123) |
+| Kubernetes | `~/minikube service heart-disease-api --url` | dynamic (e.g. [http://127.0.0.1:61321](http://127.0.0.1:61321)) |
 
 Swagger UI (interactive API docs): [http://localhost:8080/docs](http://localhost:8080/docs)
