@@ -2,6 +2,7 @@
 FastAPI application — Heart Disease Prediction API.
 Tasks 6 & 8: /predict endpoint + Prometheus metrics + structured logging.
 """
+
 import os
 import sys
 import logging
@@ -10,6 +11,7 @@ import time
 from datetime import datetime, timezone
 
 import matplotlib
+
 matplotlib.use("Agg")  # noqa: E402
 
 from fastapi import FastAPI, HTTPException, Request  # noqa: E402
@@ -203,4 +205,5 @@ def sample_input():
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run("app:app", host="127.0.0.1", port=8080, reload=False, log_level="info")

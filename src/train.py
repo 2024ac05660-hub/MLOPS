@@ -2,12 +2,14 @@
 Train, evaluate, and log ML models for Heart Disease prediction.
 Tasks 2 & 3: Feature engineering, model development, MLflow experiment tracking.
 """
+
 import os
 import json
 import pickle
 import warnings
 
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import mlflow
@@ -128,8 +130,12 @@ def train_and_log(model_name, classifier, params, X_train, X_test, y_train, y_te
     # Cross-validation
     cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
     cv_results = cross_validate(
-        pipeline, pd.concat([X_train, X_test]), pd.concat([y_train, y_test]),
-        cv=cv, scoring=["accuracy", "roc_auc"], return_train_score=False,
+        pipeline,
+        pd.concat([X_train, X_test]),
+        pd.concat([y_train, y_test]),
+        cv=cv,
+        scoring=["accuracy", "roc_auc"],
+        return_train_score=False,
     )
     metrics["cv_accuracy_mean"] = round(cv_results["test_accuracy"].mean(), 4)
     metrics["cv_roc_auc_mean"] = round(cv_results["test_roc_auc"].mean(), 4)
@@ -154,8 +160,7 @@ def train_and_log(model_name, classifier, params, X_train, X_test, y_train, y_te
             registered_model_name=model_name.replace(" ", "_"),
         )
 
-        report = classification_report(y_test, y_pred,
-                                       target_names=["No Disease", "Disease"])
+        report = classification_report(y_test, y_pred, target_names=["No Disease", "Disease"])
         report_path = os.path.join(REPORTS_DIR, f"report_{model_name.replace(' ', '_')}.txt")
         with open(report_path, "w") as f:
             f.write(report)
@@ -178,8 +183,7 @@ def tune_random_forest(X_train, y_train):
     """Grid-search best RF hyperparameters."""
     preproc = build_preprocessing_pipeline()
     base_pipeline = Pipeline(
-        [("preprocessor", preproc),
-         ("classifier", RandomForestClassifier(random_state=42))],
+        [("preprocessor", preproc), ("classifier", RandomForestClassifier(random_state=42))],
         memory=None,
     )
     param_grid = {
@@ -197,8 +201,10 @@ def tune_logistic_regression(X_train, y_train):
     """Grid-search best LR hyperparameters."""
     preproc = build_preprocessing_pipeline()
     base_pipeline = Pipeline(
-        [("preprocessor", preproc),
-         ("classifier", LogisticRegression(solver="lbfgs", max_iter=1000, random_state=42))],
+        [
+            ("preprocessor", preproc),
+            ("classifier", LogisticRegression(solver="lbfgs", max_iter=1000, random_state=42)),
+        ],
         memory=None,
     )
     param_grid = {"classifier__C": [0.01, 0.1, 1.0, 10.0]}
@@ -212,8 +218,7 @@ def tune_gradient_boosting(X_train, y_train):
     """Grid-search best GB hyperparameters."""
     preproc = build_preprocessing_pipeline()
     base_pipeline = Pipeline(
-        [("preprocessor", preproc),
-         ("classifier", GradientBoostingClassifier(random_state=42))],
+        [("preprocessor", preproc), ("classifier", GradientBoostingClassifier(random_state=42))],
         memory=None,
     )
     param_grid = {
@@ -274,8 +279,10 @@ def main():
     gb_lr = best_gb_params["classifier__learning_rate"]
     gb_depth = best_gb_params["classifier__max_depth"]
     gb_params = {
-        "n_estimators": gb_n, "learning_rate": gb_lr,
-        "max_depth": gb_depth, "random_state": 42,
+        "n_estimators": gb_n,
+        "learning_rate": gb_lr,
+        "max_depth": gb_depth,
+        "random_state": 42,
     }
     gb_clf = GradientBoostingClassifier(
         n_estimators=gb_n,

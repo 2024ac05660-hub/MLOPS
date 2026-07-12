@@ -1,6 +1,7 @@
 """
 Unit tests for FastAPI prediction endpoint.
 """
+
 import os
 import sys
 import pickle
@@ -17,36 +18,55 @@ def client():
     from sklearn.linear_model import LogisticRegression
     from sklearn.pipeline import Pipeline
     from data_processing import (
-        load_raw_data, clean_data, prepare_train_test,
+        load_raw_data,
+        clean_data,
+        prepare_train_test,
         build_preprocessing_pipeline,
     )
-    RAW_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "raw",
-                            "processed.cleveland.data")
+
+    RAW_PATH = os.path.join(
+        os.path.dirname(__file__), "..", "data", "raw", "processed.cleveland.data"
+    )
     df = clean_data(load_raw_data(RAW_PATH))
     X_train, _, y_train, _ = prepare_train_test(df)
-    pipeline = Pipeline([
-        ("preprocessor", build_preprocessing_pipeline()),
-        ("classifier", LogisticRegression(max_iter=500, random_state=42)),
-    ])
+    pipeline = Pipeline(
+        [
+            ("preprocessor", build_preprocessing_pipeline()),
+            ("classifier", LogisticRegression(max_iter=500, random_state=42)),
+        ]
+    )
     pipeline.fit(X_train, y_train)
 
     import tempfile
+
     tmp = tempfile.NamedTemporaryFile(suffix=".pkl", delete=False)
     pickle.dump(pipeline, tmp)
     tmp.close()
 
     import app as app_module
+
     app_module.MODEL_PATH = tmp.name
     app_module._model = pipeline  # inject directly
 
     from app import app
+
     return TestClient(app)
 
 
 VALID_PAYLOAD = {
-    "age": 55.0, "sex": 1.0, "cp": 4.0, "trestbps": 140.0, "chol": 217.0,
-    "fbs": 0.0, "restecg": 2.0, "thalach": 111.0, "exang": 1.0, "oldpeak": 5.6,
-    "slope": 3.0, "ca": 0.0, "thal": 7.0,
+    "age": 55.0,
+    "sex": 1.0,
+    "cp": 4.0,
+    "trestbps": 140.0,
+    "chol": 217.0,
+    "fbs": 0.0,
+    "restecg": 2.0,
+    "thalach": 111.0,
+    "exang": 1.0,
+    "oldpeak": 5.6,
+    "slope": 3.0,
+    "ca": 0.0,
+    "thal": 7.0,
 }
 
 

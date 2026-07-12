@@ -1,6 +1,7 @@
 """
 Data loading, cleaning, and preprocessing pipeline for Heart Disease UCI dataset.
 """
+
 import os
 import pandas as pd
 from sklearn.model_selection import train_test_split
@@ -10,9 +11,20 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.impute import SimpleImputer
 
 COLUMN_NAMES = [
-    "age", "sex", "cp", "trestbps", "chol", "fbs",
-    "restecg", "thalach", "exang", "oldpeak",
-    "slope", "ca", "thal", "target",
+    "age",
+    "sex",
+    "cp",
+    "trestbps",
+    "chol",
+    "fbs",
+    "restecg",
+    "thalach",
+    "exang",
+    "oldpeak",
+    "slope",
+    "ca",
+    "thal",
+    "target",
 ]
 
 CATEGORICAL_FEATURES = ["sex", "cp", "fbs", "restecg", "exang", "slope", "ca", "thal"]
@@ -69,13 +81,17 @@ def build_preprocessing_pipeline() -> ColumnTransformer:
     - Continuous features: median imputation + standard scaling
     - Categorical features: median imputation only (already numeric codes)
     """
-    continuous_pipe = Pipeline([
-        ("imputer", SimpleImputer(strategy="median")),
-        ("scaler", StandardScaler()),
-    ])
-    categorical_pipe = Pipeline([
-        ("imputer", SimpleImputer(strategy="median")),
-    ])
+    continuous_pipe = Pipeline(
+        [
+            ("imputer", SimpleImputer(strategy="median")),
+            ("scaler", StandardScaler()),
+        ]
+    )
+    categorical_pipe = Pipeline(
+        [
+            ("imputer", SimpleImputer(strategy="median")),
+        ]
+    )
     preprocessor = ColumnTransformer(
         transformers=[
             ("continuous", continuous_pipe, CONTINUOUS_FEATURES),

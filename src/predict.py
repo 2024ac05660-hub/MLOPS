@@ -2,6 +2,7 @@
 Inference script — load the saved best model and run predictions.
 Task 4: Model packaging & reproducibility.
 """
+
 import os
 import json
 import pickle
@@ -13,9 +14,19 @@ MODEL_PATH = os.path.join(os.path.dirname(__file__), "..", "models", "best_model
 META_PATH = os.path.join(os.path.dirname(__file__), "..", "models", "model_meta.json")
 
 SAMPLE_INPUT = {
-    "age": 55.0, "sex": 1.0, "cp": 4.0, "trestbps": 140.0, "chol": 217.0,
-    "fbs": 0.0, "restecg": 2.0, "thalach": 111.0, "exang": 1.0, "oldpeak": 5.6,
-    "slope": 3.0, "ca": 0.0, "thal": 7.0,
+    "age": 55.0,
+    "sex": 1.0,
+    "cp": 4.0,
+    "trestbps": 140.0,
+    "chol": 217.0,
+    "fbs": 0.0,
+    "restecg": 2.0,
+    "thalach": 111.0,
+    "exang": 1.0,
+    "oldpeak": 5.6,
+    "slope": 3.0,
+    "ca": 0.0,
+    "thal": 7.0,
 }
 
 

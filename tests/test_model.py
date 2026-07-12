@@ -1,6 +1,7 @@
 """
 Unit tests for model training, evaluation, and inference.
 """
+
 import os
 import pickle
 import sys
@@ -33,12 +34,15 @@ def dataset():
 def trained_pipeline(dataset):
     """Train a lightweight LR pipeline for tests — avoids disk dependency."""
     from sklearn.linear_model import LogisticRegression
+
     X_train, X_test, y_train, y_test = dataset
     preproc = build_preprocessing_pipeline()
-    pipeline = Pipeline([
-        ("preprocessor", preproc),
-        ("classifier", LogisticRegression(max_iter=500, random_state=42)),
-    ])
+    pipeline = Pipeline(
+        [
+            ("preprocessor", preproc),
+            ("classifier", LogisticRegression(max_iter=500, random_state=42)),
+        ]
+    )
     pipeline.fit(X_train, y_train)
     return pipeline, X_test, y_test
 
@@ -61,12 +65,14 @@ class TestModelPredictions:
 
     def test_accuracy_above_threshold(self, trained_pipeline):
         from sklearn.metrics import accuracy_score
+
         pipeline, X_test, y_test = trained_pipeline
         acc = accuracy_score(y_test, pipeline.predict(X_test))
         assert acc >= 0.70, f"Accuracy {acc:.3f} below minimum threshold 0.70"
 
     def test_roc_auc_above_threshold(self, trained_pipeline):
         from sklearn.metrics import roc_auc_score
+
         pipeline, X_test, y_test = trained_pipeline
         proba = pipeline.predict_proba(X_test)[:, 1]
         auc = roc_auc_score(y_test, proba)
