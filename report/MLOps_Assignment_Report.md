@@ -727,3 +727,21 @@ heart-disease-mlops/
 | Kubernetes | `~/minikube service heart-disease-api --url` | dynamic (e.g. [http://127.0.0.1:61321](http://127.0.0.1:61321)) |
 
 Swagger UI (interactive API docs): [http://localhost:8080/docs](http://localhost:8080/docs)
+
+---
+
+## Video Recording
+
+A short video recording demonstrating the full end-to-end pipeline is available here:
+
+**[Watch Pipeline Recording on Google Drive](https://drive.google.com/file/d/15icPkiUXLxpKBhezTPU-mOw8ve2wLT8Z/view?usp=drive_link)**
+
+The video covers:
+
+- MLflow experiment tracking UI (`http://localhost:5000`)
+- Unit tests passing (34 tests)
+- Docker build and container run
+- FastAPI `/predict` endpoint via Swagger UI
+- Prometheus metrics and Grafana dashboard
+- Kubernetes deployment on Minikube
+- GitHub Actions CI/CD pipeline (all 4 stages green)
