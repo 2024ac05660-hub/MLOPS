@@ -9,14 +9,16 @@ import pickle
 import time
 from datetime import datetime, timezone
 
-from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field
-from prometheus_fastapi_instrumentator import Instrumentator
-from prometheus_client import Counter, Histogram, Gauge
+import matplotlib
+matplotlib.use("Agg")  # noqa: E402
+
+from fastapi import FastAPI, HTTPException, Request  # noqa: E402
+from pydantic import BaseModel, Field  # noqa: E402
+from prometheus_fastapi_instrumentator import Instrumentator  # noqa: E402
+from prometheus_client import Counter, Histogram  # noqa: E402
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
-from predict import predict as run_predict, SAMPLE_INPUT, ALL_FEATURES
+from predict import predict as run_predict, SAMPLE_INPUT  # noqa: E402
 
 # ─── Logging setup ───────────────────────────────────────────────────────────
 logging.basicConfig(

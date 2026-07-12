@@ -6,25 +6,35 @@ import os
 import json
 import pickle
 import warnings
-import numpy as np
-import pandas as pd
+
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import mlflow
 import mlflow.sklearn
+import numpy as np
+import pandas as pd
+from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
-from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
-from sklearn.pipeline import Pipeline
-from sklearn.model_selection import cross_validate, StratifiedKFold, GridSearchCV
 from sklearn.metrics import (
-    accuracy_score, precision_score, recall_score, f1_score,
-    roc_auc_score, roc_curve, confusion_matrix, classification_report,
     ConfusionMatrixDisplay,
+    accuracy_score,
+    classification_report,
+    confusion_matrix,
+    f1_score,
+    precision_score,
+    recall_score,
+    roc_auc_score,
+    roc_curve,
 )
+from sklearn.model_selection import GridSearchCV, StratifiedKFold, cross_validate
+from sklearn.pipeline import Pipeline
+
 from data_processing import (
-    load_processed, prepare_train_test, build_preprocessing_pipeline,
-    PROCESSED_DATA_PATH, ALL_FEATURES,
+    ALL_FEATURES,
+    build_preprocessing_pipeline,
+    load_processed,
+    prepare_train_test,
 )
 
 warnings.filterwarnings("ignore")
@@ -138,8 +148,11 @@ def train_and_log(model_name, classifier, params, X_train, X_test, y_train, y_te
         if fi_path:
             mlflow.log_artifact(fi_path, artifact_path="plots")
 
-        mlflow.sklearn.log_model(pipeline, artifact_path="model",
-                                  registered_model_name=model_name.replace(" ", "_"))
+        mlflow.sklearn.log_model(
+            pipeline,
+            artifact_path="model",
+            registered_model_name=model_name.replace(" ", "_"),
+        )
 
         report = classification_report(y_test, y_pred,
                                        target_names=["No Disease", "Disease"])

@@ -3,16 +3,22 @@ Unit tests for data_processing module.
 """
 import os
 import sys
-import pytest
+
 import numpy as np
-import pandas as pd
+import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from data_processing import (
-    load_raw_data, clean_data, build_preprocessing_pipeline,
-    prepare_train_test, get_feature_target, ALL_FEATURES,
-    CONTINUOUS_FEATURES, CATEGORICAL_FEATURES, COLUMN_NAMES,
+from data_processing import (  # noqa: E402
+    ALL_FEATURES,
+    CATEGORICAL_FEATURES,
+    COLUMN_NAMES,
+    CONTINUOUS_FEATURES,
+    build_preprocessing_pipeline,
+    clean_data,
+    get_feature_target,
+    load_raw_data,
+    prepare_train_test,
 )
 
 RAW_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "raw", "processed.cleveland.data")

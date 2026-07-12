@@ -6,7 +6,6 @@ import os
 import json
 import pickle
 import argparse
-import numpy as np
 import pandas as pd
 from data_processing import ALL_FEATURES
 

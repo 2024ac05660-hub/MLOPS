@@ -2,21 +2,23 @@
 Unit tests for model training, evaluation, and inference.
 """
 import os
-import sys
 import pickle
+import sys
 import tempfile
-import pytest
+
 import numpy as np
-import pandas as pd
+import pytest
 from sklearn.pipeline import Pipeline
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from data_processing import (
-    load_raw_data, clean_data, prepare_train_test,
-    build_preprocessing_pipeline, ALL_FEATURES,
+from data_processing import (  # noqa: E402
+    build_preprocessing_pipeline,
+    clean_data,
+    load_raw_data,
+    prepare_train_test,
 )
-from predict import predict, SAMPLE_INPUT
+from predict import predict, SAMPLE_INPUT  # noqa: E402
 
 RAW_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "raw", "processed.cleveland.data")
 
