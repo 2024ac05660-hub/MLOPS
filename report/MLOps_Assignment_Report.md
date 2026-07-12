@@ -2,7 +2,6 @@
 
 **Course:** Machine Learning Operations (MLOps) AIMLCZG523
 **Assignment:** 01
-**Total Marks:** 50
 **GitHub Repository:** [https://github.com/2024ac05660-hub/MLOPS](https://github.com/2024ac05660-hub/MLOPS)
 
 ---
