@@ -1,0 +1,38 @@
+# Exclude dev artifacts that don't belong in the image
+__pycache__/
+*.py[cod]
+*.pyo
+.git/
+.github/
+.pytest_cache/
+.coverage
+htmlcov/
+coverage.xml
+test-results.xml
+venv/
+.venv/
+env/
+.env/
+*.egg-info/
+dist/
+build/
+.DS_Store
+notebooks/
+report/
+screenshots/
+mlruns/
+helm/
+k8s/
+monitoring/
+scripts/
+tests/
+conftest.py
+setup.cfg
+docker-compose.yml
+environment.yml
+README.md
+ACCESS_INSTRUCTIONS.md
+VIDEO_RECORDING_GUIDE.md
+
+# Keep models/ — needed for inference at runtime
+# (do NOT add models/ here)

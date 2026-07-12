@@ -164,16 +164,22 @@ jobs:
           path: models/
 
       - name: Verify model file present before build
-        run: ls -lh models/
+        run: |
+          ls -lh models/
+          test -f models/best_model.pkl || (echo "ERROR: best_model.pkl missing!" && exit 1)
 
       - name: Build Docker image
         run: docker build -t heart-disease-api:ci .
+
+      - name: Verify model inside image
+        run: |
+          docker run --rm heart-disease-api:ci \
+            python -c "import pickle; m=pickle.load(open('/app/models/best_model.pkl','rb')); print('Model OK:', type(m).__name__)"
 
       - name: Start container
         run: |
           docker run -d -p 8080:8080 \
             --name hd-api-test \
-            -e MODEL_PATH=/app/models/best_model.pkl \
             heart-disease-api:ci
 
       - name: Wait for container to be ready

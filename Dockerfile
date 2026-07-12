@@ -23,9 +23,7 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 COPY src/ ./src/
 COPY api/ ./api/
 COPY data/ ./data/
-
-# models/ is mounted at runtime or copied by CI — create dir so it exists
-RUN mkdir -p ./models/
+COPY models/ ./models/
 
 # Ensure Python can find src and api modules
 ENV PYTHONPATH=/app/src:/app/api
